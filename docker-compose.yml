@@ -1,0 +1,20 @@
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: ewallet-db
+    environment:
+      POSTGRES_USER: ewallet
+      POSTGRES_PASSWORD: ewallet123
+      POSTGRES_DB: ewallet
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ewallet -d ewallet" ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:
