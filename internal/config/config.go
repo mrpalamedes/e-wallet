@@ -11,7 +11,7 @@ const minSecretLen = 32
 
 type Config struct {
 	HTTPAddr    string
-	DatabaseUrl string
+	DatabaseURL string
 	JWTSecret   string
 	JWTTTL      time.Duration
 }
@@ -24,7 +24,7 @@ func Load() (Config, error) {
 
 	cfg := Config{
 		HTTPAddr:    getEnv("HTTP_ADDR", ":8080"),
-		DatabaseUrl: getEnv("DATABASE_URL", "postgres://ewallet:ewallet@localhost:5432/ewallet?sslmode=disable"),
+		DatabaseURL: getEnv("DATABASE_URL", "postgres://ewallet:ewallet@localhost:5432/ewallet?sslmode=disable"),
 		JWTSecret:   os.Getenv("JWT_SECRET"),
 		JWTTTL:      ttl,
 	}

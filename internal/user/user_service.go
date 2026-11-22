@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -10,16 +11,24 @@ import (
 
 const maxPasswordBytes = 72
 
-type userRepository interface {
+var dummyHash, _ = bcrypt.GenerateFromPassword([]byte("dummy-password"), bcrypt.DefaultCost)
+
+type repository interface {
 	Create(ctx context.Context, user User) (User, error)
+	FindByEmail(ctx context.Context, email string) (User, error)
 }
 
-type UserService struct {
-	userRepository userRepository
+type tokenGenerator interface {
+	Generate(userID string) (string, error)
 }
 
-func NewUserService(userRepository userRepository) *UserService {
-	return &UserService{userRepository: userRepository}
+type Service struct {
+	userRepository repository
+	token          tokenGenerator
+}
+
+func NewService(userRepository repository, token tokenGenerator) *Service {
+	return &Service{userRepository: userRepository, token: token}
 }
 
 type RegisterInput struct {
@@ -28,7 +37,7 @@ type RegisterInput struct {
 	Password string
 }
 
-func (s *UserService) Register(ctx context.Context, input RegisterInput) (User, error) {
+func (s *Service) Register(ctx context.Context, input RegisterInput) (User, error) {
 	if len(input.Password) > maxPasswordBytes {
 		return User{}, ErrPasswordTooLong
 	}
@@ -47,6 +56,40 @@ func (s *UserService) Register(ctx context.Context, input RegisterInput) (User, 
 		return User{}, fmt.Errorf("create user: %w", err)
 	}
 	return user, nil
+}
+
+type LoginInput struct {
+	Email    string
+	Password string
+}
+
+func (s *Service) Login(ctx context.Context, input LoginInput) (string, error) {
+	if len(input.Password) > maxPasswordBytes {
+		return "", ErrInvalidCredentials
+	}
+
+	user, err := s.userRepository.FindByEmail(ctx, normalizeEmail(input.Email))
+	if errors.Is(err, ErrNotFound) {
+		_ = bcrypt.CompareHashAndPassword(dummyHash, []byte(input.Password))
+		return "", ErrInvalidCredentials
+	}
+	if err != nil {
+		return "", fmt.Errorf("find user: %w", err)
+	}
+
+	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(input.Password))
+	if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
+		return "", ErrInvalidCredentials
+	}
+	if err != nil {
+		return "", fmt.Errorf("compare password: %w", err)
+	}
+
+	token, err := s.token.Generate(user.ID)
+	if err != nil {
+		return "", fmt.Errorf("generate token: %w", err)
+	}
+	return token, nil
 }
 
 func normalizeEmail(email string) string {

@@ -31,7 +31,7 @@ func run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	pool, err := newPool(ctx, cfg.DatabaseUrl)
+	pool, err := newPool(ctx, cfg.DatabaseURL)
 	if err != nil {
 		return err
 	}
@@ -39,7 +39,7 @@ func run() error {
 
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,
-		Handler:           newRouter(pool),
+		Handler:           newRouter(cfg, pool),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 

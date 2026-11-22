@@ -1,6 +1,8 @@
 package main
 
 import (
+	"ewallet/internal/auth"
+	"ewallet/internal/config"
 	"ewallet/internal/user"
 	"net/http"
 
@@ -8,7 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func newRouter(pool *pgxpool.Pool) *gin.Engine {
+func newRouter(cfg config.Config, pool *pgxpool.Pool) *gin.Engine {
 	r := gin.New()
 	r.Use(gin.Logger(), gin.Recovery())
 
@@ -20,8 +22,10 @@ func newRouter(pool *pgxpool.Pool) *gin.Engine {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
+	token := auth.NewJWT(cfg.JWTSecret, cfg.JWTTTL)
+
 	userRepository := user.NewRepository(pool)
-	userService := user.NewUserService(userRepository)
+	userService := user.NewService(userRepository, token)
 	userHandler := user.NewHandler(userService)
 
 	v1 := r.Group("/api/v1")

@@ -11,6 +11,7 @@ import (
 
 type userService interface {
 	Register(ctx context.Context, input RegisterInput) (User, error)
+	Login(ctx context.Context, input LoginInput) (string, error)
 }
 
 type Handler struct {
@@ -23,6 +24,7 @@ func NewHandler(userService userService) *Handler {
 
 func (h *Handler) RegisterRoutes(rg *gin.RouterGroup) {
 	rg.POST("/users/register", h.register)
+	rg.POST("/users/login", h.login)
 }
 
 type registerRequest struct {
@@ -71,4 +73,37 @@ func (h *Handler) register(c *gin.Context) {
 		Email:   u.Email,
 		Message: "User registered successfully",
 	})
+}
+
+type loginRequest struct {
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required"`
+}
+
+type LoginResponse struct {
+	Token string `json:"token"`
+}
+
+func (h *Handler) login(c *gin.Context) {
+	var req loginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "valid email and password are required"})
+		return
+	}
+
+	token, err := h.userService.Login(c.Request.Context(), LoginInput{
+		Email:    req.Email,
+		Password: req.Password,
+	})
+	switch {
+	case errors.Is(err, ErrInvalidCredentials):
+		c.JSON(http.StatusUnauthorized, gin.H{"error": ErrInvalidCredentials.Error()})
+		return
+	case err != nil:
+		slog.ErrorContext(c.Request.Context(), "login user", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+
+	c.JSON(http.StatusOK, LoginResponse{Token: token})
 }
