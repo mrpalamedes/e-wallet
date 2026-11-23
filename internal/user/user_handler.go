@@ -34,7 +34,7 @@ type registerRequest struct {
 }
 
 type registerResponse struct {
-	UserID  string `json:"user_id"`
+	UserID  string `json:"userID"`
 	Name    string `json:"name"`
 	Email   string `json:"email"`
 	Message string `json:"message"`

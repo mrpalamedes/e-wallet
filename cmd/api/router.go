@@ -4,6 +4,7 @@ import (
 	"ewallet/internal/auth"
 	"ewallet/internal/config"
 	"ewallet/internal/user"
+	"ewallet/internal/wallet"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -28,8 +29,15 @@ func newRouter(cfg config.Config, pool *pgxpool.Pool) *gin.Engine {
 	userService := user.NewService(userRepository, token)
 	userHandler := user.NewHandler(userService)
 
+	walletRepo := wallet.NewWalletRepository(pool)
+	walletHandler := wallet.NewHandler(walletRepo)
+
 	v1 := r.Group("/api/v1")
 	userHandler.RegisterRoutes(v1)
+
+	protected := r.Group("/api/v1")
+	protected.Use(auth.Middleware(token))
+	walletHandler.RegisterRoutes(protected)
 
 	return r
 }
