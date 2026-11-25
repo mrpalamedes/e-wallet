@@ -3,6 +3,7 @@ package main
 import (
 	"ewallet/internal/auth"
 	"ewallet/internal/config"
+	"ewallet/internal/transaction"
 	"ewallet/internal/user"
 	"ewallet/internal/wallet"
 	"net/http"
@@ -29,15 +30,20 @@ func newRouter(cfg config.Config, pool *pgxpool.Pool) *gin.Engine {
 	userService := user.NewService(userRepository, token)
 	userHandler := user.NewHandler(userService)
 
-	walletRepo := wallet.NewWalletRepository(pool)
+	walletRepo := wallet.NewRepository(pool)
 	walletHandler := wallet.NewHandler(walletRepo)
+
+	txRepo := transaction.NewRepository(pool)
+	txService := transaction.NewService(txRepo)
+	txHandler := transaction.NewHandler(txService)
 
 	v1 := r.Group("/api/v1")
 	userHandler.RegisterRoutes(v1)
 
-	protected := r.Group("/api/v1")
+	protected := v1.Group("")
 	protected.Use(auth.Middleware(token))
 	walletHandler.RegisterRoutes(protected)
+	txHandler.RegisterRoutes(protected)
 
 	return r
 }
