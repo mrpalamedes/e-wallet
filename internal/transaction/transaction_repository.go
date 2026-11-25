@@ -91,7 +91,7 @@ func (r *TransactionRepository) Transfer(ctx context.Context, fromID, toID strin
 	_, err = tx.Exec(ctx,
 		`UPDATE wallets
 		 SET balance = balance + $1, updated_at = now()
-		 WHERE user_id = $2`, amount, fromID,
+		 WHERE user_id = $2`, amount, toID,
 	)
 	if err != nil {
 		return "", fmt.Errorf("credit recipient wallet: %w", err)
@@ -100,7 +100,7 @@ func (r *TransactionRepository) Transfer(ctx context.Context, fromID, toID strin
 	var transactionID string
 	err = tx.QueryRow(ctx,
 		`INSERT INTO transactions (user_id, type, amount, from_account, to_account, status)
-		 VALUE ($1, $2, $3, $4, $5, $6)
+		 VALUES ($1, $2, $3, $4, $5, $6)
 		 RETURNING id`, fromID, TypeTransferOut, amount, fromID, toID, StatusCompleted,
 	).Scan(&transactionID)
 	if err != nil {
@@ -109,7 +109,7 @@ func (r *TransactionRepository) Transfer(ctx context.Context, fromID, toID strin
 
 	_, err = tx.Exec(ctx,
 		`INSERT INTO transactions (user_id, type, amount, from_account, to_account, status)
-		 VALUE ($1, $2, $3, $4, $5, $6)`, toID, TypeTransferIn, amount, fromID, toID, StatusCompleted,
+		 VALUES ($1, $2, $3, $4, $5, $6)`, toID, TypeTransferIn, amount, fromID, toID, StatusCompleted,
 	)
 	if err != nil {
 		return "", fmt.Errorf("insert transfer_in transaction: %w", err)
