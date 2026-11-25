@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"ewallet/internal/config"
+	"ewallet/internal/payment"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -36,6 +38,17 @@ func run() error {
 		return err
 	}
 	defer pool.Close()
+
+	bgCtx, cancelBg := context.WithCancel(ctx)
+	var wg sync.WaitGroup
+	defer func() {
+		cancelBg()
+		wg.Wait()
+	}()
+
+	wg.Go(func() {
+		payment.RunSweeper(bgCtx, payment.NewRepository(pool), cfg.PaymentSweepInterval)
+	})
 
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,
